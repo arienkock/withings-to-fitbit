@@ -118,7 +118,7 @@ router.get("/FitbitAuth", (req, res, next) => {
 
   function storeFitbitTokens(result) {
     return lowDb.then((db) =>
-      db.get("fitbitTokens").set(result.data.body.user_id, result.data).write()
+      db.get("fitbitTokens").set(result.data.user_id, result.data).write()
     );
   }
 });
