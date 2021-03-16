@@ -9,6 +9,8 @@ const {
   WITHINGS_CLIENT_ID,
   WITHINGS_CONSUMER_SECRET,
   WITHINGS_REDIRECT_URI,
+  TLS_PRIVATE_KEY_PATH,
+  TLS_FULL_CHAIN_PATH,
 } = process.env;
 if (
   [WITHINGS_CLIENT_ID, WITHINGS_CONSUMER_SECRET, WITHINGS_REDIRECT_URI].some(
@@ -87,10 +89,19 @@ app.get("/", (_req, res) => {
   res.redirect("/withings-to-fitbit/WithingsAuth");
 });
 
-const tlsOptions = {
-  key: fs.readFileSync("key.pem"),
-  cert: fs.readFileSync("cert.pem"),
-};
+// /etc/letsencrypt/live/everest.positor.nl/fullchain.pem
+// Your key file has been saved at:
+// /etc/letsencrypt/live/everest.positor.nl/privkey.pem
 
-http.createServer(app).listen(80, () => "Listening on port 80");
-https.createServer(tlsOptions, app).listen(443, () => "Listening on port 443");
+http.createServer(app).listen(80, () => "Listening on ports 80");
+try {
+  const tlsOptions = {
+    key: fs.readFileSync(TLS_PRIVATE_KEY_PATH || "key.pem"),
+    cert: fs.readFileSync(TLS_FULL_CHAIN_PATH || "cert.pem"),
+  };
+  https
+    .createServer(tlsOptions, app)
+    .listen(443, () => "Listening on port 443");
+} catch (err) {
+  console.warn("Could not initiate HTTPS", err);
+}
