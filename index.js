@@ -86,12 +86,12 @@ function postAuthCode(code) {
   return axios.post("https://wbsapi.withings.net/v2/oauth2", data);
 }
 
-app.use(express.static("public"));
 app.use(express.json());
 app.use("/withings-to-fitbit", router);
 app.get("/", (_req, res) => {
   res.redirect("/withings-to-fitbit/WithingsAuth");
 });
+app.use(express.static("public"));
 
 // /etc/letsencrypt/live/everest.positor.nl/fullchain.pem
 // Your key file has been saved at:
