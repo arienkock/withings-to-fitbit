@@ -91,7 +91,7 @@ router.get("/WithingsAuth", (req, res, next) => {
   }
 });
 
-router.get("FitbitAuth", (req, res, next) => {
+router.get("/FitbitAuth", (req, res, next) => {
   if (req.query.code) {
     exchangeForFitbitTokens();
   } else {
