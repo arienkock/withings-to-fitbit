@@ -13,6 +13,7 @@ const {
   WITHINGS_CONSUMER_SECRET,
   WITHINGS_REDIRECT_URI,
   TLS_PRIVATE_KEY_PATH,
+  TLS_CERT_PATH,
   TLS_FULL_CHAIN_PATH,
 } = process.env;
 if (
@@ -99,8 +100,9 @@ app.get("/", (_req, res) => {
 http.createServer(app).listen(80, () => "Listening on ports 80");
 try {
   const tlsOptions = {
-    key: fs.readFileSync(TLS_PRIVATE_KEY_PATH || "key.pem"),
-    cert: fs.readFileSync(TLS_FULL_CHAIN_PATH || "cert.pem"),
+    key: fs.readFileSync(TLS_PRIVATE_KEY_PATH || "key.pem", "utf8"),
+    cert: fs.readFileSync(TLS_CERT_PATH || "cert.pem", "utf8"),
+    ca: [fs.readFileSync(TLS_FULL_CHAIN_PATH || "chain.pem", "utf8")],
   };
   https
     .createServer(tlsOptions, app)
