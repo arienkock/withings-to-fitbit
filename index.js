@@ -141,7 +141,8 @@ router.get("/FitbitAuth", (req, res, next) => {
 
   function createWithingsNotification(fitbitTokenData) {
     const withingsUserID = req.query.state;
-    console.log("withingsUserID ", withingsUserID);
+    console.log("withingsUserID", withingsUserID);
+    console.log("fitbitTokenData", fitbitTokenData);
     return lowDb
       .then((db) => db.get("withingsTokens").get(withingsUserID).value())
       .then((withingsTokenData) =>
@@ -158,7 +159,12 @@ router.get("/FitbitAuth", (req, res, next) => {
               client_id: WITHINGS_CLIENT_ID,
               callbackurl: BASE_URL + "/withings-to-fitbit/notification",
             });
-            console.log("Posting to https://wbsapi.withings.net/notify ", data);
+            console.log(
+              "Posting to https://wbsapi.withings.net/notify",
+              data,
+              "with token",
+              withingsTokenData.access_token
+            );
             return axios.post("https://wbsapi.withings.net/notify", data, {
               headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -174,7 +180,7 @@ router.get("/FitbitAuth", (req, res, next) => {
       .then((db) =>
         db.get("fitbitTokens").set(result.data.user_id, result.data).write()
       )
-      .then(() => result);
+      .then(() => result.data);
   }
 });
 
