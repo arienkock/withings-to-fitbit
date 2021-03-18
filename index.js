@@ -139,23 +139,34 @@ router.get("/FitbitAuth", (req, res, next) => {
       .catch((err) => next(err));
   }
 
-  function createWithingsNotification() {
+  function createWithingsNotification(fitbitTokenData) {
     const withingsUserID = req.query.state;
+    console.log("withingsUserID ", withingsUserID);
     return lowDb
       .then((db) => db.get("withingsTokens").get(withingsUserID).value())
-      .then((withingsTokenData) => {
-        const data = qs.stringify({
-          action: "subscribe",
-          client_id: WITHINGS_CLIENT_ID,
-          callbackurl: BASE_URL + "/withings-to-fitbit/notification",
-        });
-        return axios.post("https://wbsapi.withings.net/notify", data, {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: "Basic " + withingsTokenData.access_token,
-          },
-        });
-      });
+      .then((withingsTokenData) =>
+        lowDb
+          .then((db) =>
+            db
+              .get("subscriptions")
+              .set(withingsUserID, fitbitTokenData.user_id)
+              .write()
+          )
+          .then(() => {
+            const data = qs.stringify({
+              action: "subscribe",
+              client_id: WITHINGS_CLIENT_ID,
+              callbackurl: BASE_URL + "/withings-to-fitbit/notification",
+            });
+            console.log("Posting to https://wbsapi.withings.net/notify ", data);
+            return axios.post("https://wbsapi.withings.net/notify", data, {
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                Authorization: "Basic " + withingsTokenData.access_token,
+              },
+            });
+          })
+      );
   }
 
   function storeFitbitTokens(result) {
