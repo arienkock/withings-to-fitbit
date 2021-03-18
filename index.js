@@ -172,7 +172,10 @@ router.get("/FitbitAuth", (req, res, next) => {
               },
             });
           })
-      );
+      )
+      .then((result) => {
+        console.log(result.data);
+      });
   }
 
   function storeFitbitTokens(result) {
