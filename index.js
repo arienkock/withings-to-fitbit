@@ -21,6 +21,7 @@ env WITHINGS_CLIENT_ID='redacted' \
 */
 
 const {
+  BASE_URL,
   WITHINGS_CLIENT_ID,
   WITHINGS_CONSUMER_SECRET,
   WITHINGS_REDIRECT_URI,
@@ -33,6 +34,7 @@ const {
 } = process.env;
 if (
   [
+    BASE_URL,
     WITHINGS_CLIENT_ID,
     WITHINGS_CONSUMER_SECRET,
     WITHINGS_REDIRECT_URI,
@@ -41,7 +43,15 @@ if (
     FITBIT_REDIRECT_URI,
   ].some((s) => !s)
 ) {
-  console.error("Missing environment variables.");
+  console.error("Missing environment variables.", {
+    BASE_URL,
+    WITHINGS_CLIENT_ID,
+    WITHINGS_CONSUMER_SECRET,
+    WITHINGS_REDIRECT_URI,
+    FITBIT_CLIENT_ID,
+    FITBIT_CONSUMER_SECRET,
+    FITBIT_REDIRECT_URI,
+  });
   process.exit(1);
 }
 
@@ -77,25 +87,35 @@ router.get("/WithingsAuth", (req, res, next) => {
   function exchangeForWithingsTokens() {
     postWithingsAuthCode(req.query.code)
       .then(storeWithingsTokens)
-      .then(() => res.redirect("/withings-to-fitbit/FitbitAuth"))
+      .then((result) =>
+        res.redirect(
+          `/withings-to-fitbit/FitbitAuth?withingsUserID=${encodeURIComponent(
+            result.data.body.userid
+          )}`
+        )
+      )
       .catch((err) => next(err));
   }
 
   function storeWithingsTokens(result) {
-    return lowDb.then((db) =>
-      db
-        .get("withingsTokens")
-        .set(result.data.body.userid, result.data.body)
-        .write()
-    );
+    return lowDb
+      .then((db) =>
+        db
+          .get("withingsTokens")
+          .set(result.data.body.userid, result.data.body)
+          .write()
+      )
+      .then(() => result);
   }
 });
 
 router.get("/FitbitAuth", (req, res, next) => {
   if (req.query.code) {
     exchangeForFitbitTokens();
-  } else {
+  } else if (req.query.withingsUserID) {
     showFitbitAuthPage();
+  } else {
+    res.redirect("/withings-to-fitbit/WithingsAuth");
   }
 
   function showFitbitAuthPage() {
@@ -105,22 +125,53 @@ router.get("/FitbitAuth", (req, res, next) => {
               FITBIT_CLIENT_ID
             )}&redirect_uri=${encodeURIComponent(
       FITBIT_REDIRECT_URI
-    )}&scope=activity%20heartrate%20location%20nutrition%20profile%20settings%20sleep%20social%20weight&expires_in=604800">Click to Authorize</a>
+    )}&scope=activity%20heartrate%20location%20nutrition%20profile%20settings%20sleep%20social%20weight&expires_in=604800&state=${encodeURIComponent(
+      req.query.withingsUserID
+    )}">Click to Authorize</a>
       `);
   }
 
   function exchangeForFitbitTokens() {
     postFitbitAuthCode(req.query.code)
       .then(storeFitbitTokens)
+      .then(createWithingsNotification)
       .then(() => res.redirect("/withings-to-fitbit/Complete"))
       .catch((err) => next(err));
   }
 
-  function storeFitbitTokens(result) {
-    return lowDb.then((db) =>
-      db.get("fitbitTokens").set(result.data.user_id, result.data).write()
-    );
+  function createWithingsNotification() {
+    const withingsUserID = req.query.state;
+    return lowDb
+      .then((db) => db.get("withingsTokens").get(withingsUserID).value())
+      .then((withingsTokenData) => {
+        const data = qs.stringify({
+          action: "subscribe",
+          client_id: WITHINGS_CLIENT_ID,
+          callbackurl: BASE_URL + "/withings-to-fitbit/notification",
+        });
+        return axios.post("https://wbsapi.withings.net/notify", data, {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: "Basic " + withingsTokenData.access_token,
+          },
+        });
+      });
   }
+
+  function storeFitbitTokens(result) {
+    return lowDb
+      .then((db) =>
+        db.get("fitbitTokens").set(result.data.user_id, result.data).write()
+      )
+      .then(() => result);
+  }
+});
+
+router.get("/Complete", (req, res, next) => {
+  res.send(`
+    <h1>Done</h1>
+    <p>Connection made</p>
+  `);
 });
 
 function postFitbitAuthCode(code) {
@@ -162,10 +213,6 @@ app.get("/", (_req, res) => {
   res.redirect("/withings-to-fitbit/WithingsAuth");
 });
 app.use(express.static("public"));
-
-// /etc/letsencrypt/live/everest.positor.nl/fullchain.pem
-// Your key file has been saved at:
-// /etc/letsencrypt/live/everest.positor.nl/privkey.pem
 
 http.createServer(app).listen(80, () => "Listening on ports 80");
 try {
