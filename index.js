@@ -154,12 +154,11 @@ router.get("/FitbitAuth", (req, res, next) => {
               .write()
           )
           .then(() => {
-            // const data = qs.stringify({
-            //   action: "subscribe",
-            //   callbackurl: BASE_URL + "/withings-to-fitbit/notification",
-            //   client_id: "client_id",
-            // });
-            const data = `action=subscribe&callbackurl=${BASE_URL}/withings-to-fitbit/notification&client_id=client_id`;
+            const data = qs.stringify({
+              action: "subscribe",
+              callbackurl: BASE_URL + "/withings-to-fitbit/notification",
+            });
+            // const data = `action=subscribe&callbackurl=${BASE_URL}/withings-to-fitbit/notification&client_id=client_id`;
             console.log(
               "Posting to https://wbsapi.withings.net/notify",
               data,
@@ -169,7 +168,7 @@ router.get("/FitbitAuth", (req, res, next) => {
             return axios.post("https://wbsapi.withings.net/notify", data, {
               headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
-                Authorization: "Basic " + withingsTokenData.access_token,
+                Authorization: "Bearer " + withingsTokenData.access_token,
               },
             });
           })
