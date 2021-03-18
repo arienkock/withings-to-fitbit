@@ -58,7 +58,7 @@ if (
 const adapter = new FileAsync("db.json");
 const lowDb = low(adapter).then((db) => {
   return db.defaults({
-    subscriptions: [],
+    subscriptions: {},
     withingsTokens: {},
     fitbitTokens: {},
   });
