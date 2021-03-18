@@ -154,11 +154,11 @@ router.get("/FitbitAuth", (req, res, next) => {
               .write()
           )
           .then(() => {
-            // const data = qs.stringify({
-            //   action: "subscribe",
-            //   callbackurl: BASE_URL + "/withings-to-fitbit/notification",
-            // });
-            const data = `action=subscribe&callbackurl=${BASE_URL}/withings-to-fitbit/notification&client_id=client_id`;
+            const data = qs.stringify({
+              action: "subscribe",
+              callbackurl: WITHINGS_REDIRECT_URI, //BASE_URL + "/withings-to-fitbit/notification",
+            });
+            // const data = `action=subscribe&callbackurl=${BASE_URL}/withings-to-fitbit/notification&client_id=client_id`;
             console.log(
               "Posting to https://wbsapi.withings.net/notify",
               data,
