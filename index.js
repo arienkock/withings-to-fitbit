@@ -159,22 +159,19 @@ router.get("/FitbitAuth", (req, res, next) => {
             //   callbackurl: BASE_URL + "/withings-to-fitbit/notification",
             //   client_id: "client_id",
             // });
+            const data = `action=subscribe&callbackurl=${BASE_URL}/withings-to-fitbit/notification&client_id=client_id`;
             console.log(
               "Posting to https://wbsapi.withings.net/notify",
               data,
               "with token",
               withingsTokenData.access_token
             );
-            return axios.post(
-              "https://wbsapi.withings.net/notify",
-              `action=subscribe&callbackurl=${BASE_URL}"/withings-to-fitbit/notification&client_id=client_id"`,
-              {
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                  Authorization: "Basic " + withingsTokenData.access_token,
-                },
-              }
-            );
+            return axios.post("https://wbsapi.withings.net/notify", data, {
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                Authorization: "Basic " + withingsTokenData.access_token,
+              },
+            });
           })
       )
       .then((result) => {
