@@ -365,7 +365,9 @@ function axiosPost(url, data, config) {
       return response;
     },
     (error) => {
-      console.error(error);
+      console.error(
+        JSON.stringify(error && error.response && error.response.data)
+      );
       throw error;
     }
   );
