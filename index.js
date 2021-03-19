@@ -7,6 +7,7 @@ const low = require("lowdb");
 const FileAsync = require("lowdb/adapters/FileAsync");
 const axios = require("axios");
 const qs = require("qs");
+const morgan = require("morgan");
 
 /* Run command:
 
@@ -66,6 +67,85 @@ const lowDb = low(adapter).then((db) => {
 
 var router = express.Router();
 
+router.post("/WithingsAuth", (req, res, next) => {
+  getTokenData(req.body.userid)
+    .then(getWithingsMeasurements)
+    .then(() => res.send("ok"))
+    .catch((err) => next(err));
+
+  function getWithingsMeasurements(withingsTokenData) {
+    return axiosPost(
+      "https://wbsapi.withings.net/measure",
+      qs.stringify({
+        startdate: req.body.startdate,
+        enddate: req.body.enddate,
+        category: "1",
+        meastypes: "1,5,6,8",
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: "Bearer " + withingsTokenData.access_token,
+        },
+      }
+    );
+  }
+
+  function getTokenData(withingsUserId) {
+    lowDb
+      .then((db) => db.get("subscriptions").get(withingsUserId).value())
+      .then((fitbitUserId) =>
+        Promise.all([
+          getWithingsAccessToken(withingsUserId),
+          getFitbitAccessToken(fitbitUserId),
+        ])
+      )
+      .then(([withingsTokenData, fitbitTokenData]) => {
+        getWithingsMeasurements(withingsTokenData);
+      }); // TODO
+  }
+
+  function getWithingsAccessToken(withingsUserId) {
+    return lowDb
+      .then((db) => db.get("withingsTokens").get(withingsUserId).value())
+      .then(refreshWithingsToken)
+      .then(storeWithingsTokens);
+  }
+  function getFitbitAccessToken(fitbitUserId) {
+    return lowDb
+      .then((db) => db.get("fitbitTokens").get(fitbitUserId).value())
+      .then(refreshFitbitToken)
+      .then(storeFitbitTokens);
+  }
+
+  function refreshWithingsToken(withingsTokenData) {
+    const data = qs.stringify({
+      action: "requesttoken",
+      client_id: WITHINGS_CLIENT_ID,
+      grant_type: "refresh_token",
+      refresh_token: withingsTokenData.refresh_token,
+    });
+    return axiosPost("https://wbsapi.withings.net/v2/oauth2", data, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
+  }
+
+  function refreshFitbitToken(fitbitTokenData) {
+    const data = qs.stringify({
+      grant_type: "refresh_token",
+      refresh_token: fitbitTokenData.refresh_token,
+    });
+    return axiosPost("https://api.fitbit.com/oauth2/token", data, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization:
+          "Basic " + base64(FITBIT_CLIENT_ID + ":" + FITBIT_CONSUMER_SECRET),
+      },
+    });
+  }
+});
 router.get("/WithingsAuth", (req, res, next) => {
   if (req.query.code) {
     exchangeForWithingsTokens();
@@ -90,24 +170,24 @@ router.get("/WithingsAuth", (req, res, next) => {
       .then((result) =>
         res.redirect(
           `/withings-to-fitbit/FitbitAuth?withingsUserID=${encodeURIComponent(
-            result.data.body.userid
+            result.body.userid
           )}`
         )
       )
       .catch((err) => next(err));
   }
-
-  function storeWithingsTokens(result) {
-    return lowDb
-      .then((db) =>
-        db
-          .get("withingsTokens")
-          .set(result.data.body.userid, result.data.body)
-          .write()
-      )
-      .then(() => result);
-  }
 });
+
+function storeWithingsTokens(result) {
+  return lowDb
+    .then((db) =>
+      db
+        .get("withingsTokens")
+        .set(result.data.body.userid, result.data.body)
+        .write()
+    )
+    .then(() => result.data);
+}
 
 router.get("/FitbitAuth", (req, res, next) => {
   if (req.query.code) {
@@ -141,8 +221,6 @@ router.get("/FitbitAuth", (req, res, next) => {
 
   function createWithingsNotification(fitbitTokenData) {
     const withingsUserID = req.query.state;
-    console.log("withingsUserID", withingsUserID);
-    console.log("fitbitTokenData", fitbitTokenData);
     return lowDb
       .then((db) => db.get("withingsTokens").get(withingsUserID).value())
       .then((withingsTokenData) =>
@@ -156,36 +234,26 @@ router.get("/FitbitAuth", (req, res, next) => {
           .then(() => {
             const data = qs.stringify({
               action: "subscribe",
-              callbackurl: WITHINGS_REDIRECT_URI, //BASE_URL + "/withings-to-fitbit/notification",
+              callbackurl: WITHINGS_REDIRECT_URI,
             });
-            // const data = `action=subscribe&callbackurl=${BASE_URL}/withings-to-fitbit/notification&client_id=client_id`;
-            console.log(
-              "Posting to https://wbsapi.withings.net/notify",
-              data,
-              "with token",
-              withingsTokenData.access_token
-            );
-            return axios.post("https://wbsapi.withings.net/notify", data, {
+            return axiosPost("https://wbsapi.withings.net/notify", data, {
               headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
                 Authorization: "Bearer " + withingsTokenData.access_token,
               },
             });
           })
-      )
-      .then((result) => {
-        console.log(result.data);
-      });
-  }
-
-  function storeFitbitTokens(result) {
-    return lowDb
-      .then((db) =>
-        db.get("fitbitTokens").set(result.data.user_id, result.data).write()
-      )
-      .then(() => result.data);
+      );
   }
 });
+
+function storeFitbitTokens(result) {
+  return lowDb
+    .then((db) =>
+      db.get("fitbitTokens").set(result.data.user_id, result.data).write()
+    )
+    .then(() => result.data);
+}
 
 router.get("/Complete", (req, res, next) => {
   res.send(`
@@ -201,7 +269,7 @@ function postFitbitAuthCode(code) {
     code: code,
     redirect_uri: FITBIT_REDIRECT_URI,
   });
-  return axios.post("https://api.fitbit.com/oauth2/token", data, {
+  return axiosPost("https://api.fitbit.com/oauth2/token", data, {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Authorization:
@@ -224,10 +292,31 @@ function postWithingsAuthCode(code) {
     code: code,
     redirect_uri: WITHINGS_REDIRECT_URI,
   });
-  return axios.post("https://wbsapi.withings.net/v2/oauth2", data);
+  return axiosPost("https://wbsapi.withings.net/v2/oauth2", data);
 }
 
+function axiosPost(url, data, config) {
+  return axios.post(url, data, config).then((response) => {
+    console.log(`Axios POST
+    data:       ${response.data}
+    config:     ${response.config}
+    status:     ${response.status}
+    statusText: ${response.statusText}
+    headers:    ${response.headers}
+    `);
+    return response;
+  });
+}
+
+app.use(morgan("combined"));
 app.use(express.json());
+app.use(express.urlencoded());
+app.use((req, _res, next) => {
+  if (req.body) {
+    console.log("BODY\n" + req.body);
+  }
+  next();
+});
 app.use("/withings-to-fitbit", router);
 app.get("/", (_req, res) => {
   res.redirect("/withings-to-fitbit/WithingsAuth");
