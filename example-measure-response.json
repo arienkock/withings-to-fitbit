@@ -1,0 +1,23 @@
+{
+  "status": 0,
+  "body": {
+    "updatetime": 1616153274,
+    "timezone": "Europe/Amsterdam",
+    "measuregrps": [
+      {
+        "grpid": 2608208235,
+        "attrib": 0,
+        "date": 1616153215,
+        "created": 1616153250,
+        "category": 1,
+        "deviceid": "46350b329ecd2d864345a51b8f960d94a2be0efc",
+        "hash_deviceid": "46350b329ecd2d864345a51b8f960d94a2be0efc",
+        "measures": [
+          { "value": 103400, "type": 1, "unit": -3, "algo": 0, "fm": 131 },
+          { "value": 28014, "type": 6, "unit": -3 }
+        ],
+        "comment": null
+      }
+    ]
+  }
+}
