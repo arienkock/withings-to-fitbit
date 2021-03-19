@@ -106,10 +106,45 @@ router.post("/WithingsAuth", (req, res, next) => {
           Authorization: "Bearer " + withingsTokenData.access_token,
         },
       }
-    );
+    ).then((result) => ({ measures: result.data, tokens }));
   }
 
-  function logFitbitData() {}
+  function logFitbitData(data) {
+    const {
+      measures,
+      tokens: { fitbitTokenData },
+    } = tokens;
+    return Promise.all([
+      axiosPost(
+        `https://api.fitbit.com/1/user/${fitbitTokenData.user_id}/body/log/fat.json`,
+        qs.stringify({
+          fat: "X.XX",
+          date: "yyyy-MM-dd",
+          time: "HH:mm:ss",
+        }),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: "Bearer " + fitbitTokenData.access_token,
+          },
+        }
+      ),
+      axiosPost(
+        `https://api.fitbit.com/1/user/${fitbitTokenData.user_id}/body/log/weight.json`,
+        qs.stringify({
+          weight: "X.XX",
+          date: "yyyy-MM-dd",
+          time: "HH:mm:ss",
+        }),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: "Bearer " + fitbitTokenData.access_token,
+          },
+        }
+      ),
+    ]);
+  }
 
   function getWithingsAccessToken(withingsUserId) {
     return lowDb
