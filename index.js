@@ -298,11 +298,11 @@ function postWithingsAuthCode(code) {
 function axiosPost(url, data, config) {
   return axios.post(url, data, config).then((response) => {
     console.log(`Axios POST
-    data:       ${response.data}
-    config:     ${response.config}
-    status:     ${response.status}
-    statusText: ${response.statusText}
-    headers:    ${response.headers}
+    data:       ${JSON.stringify(response.data)}
+    config:     ${JSON.stringify(response.config)}
+    status:     ${JSON.stringify(response.status)}
+    statusText: ${JSON.stringify(response.statusText)}
+    headers:    ${JSON.stringify(response.headers)}
     `);
     return response;
   });
@@ -312,8 +312,8 @@ app.use(morgan("combined"));
 app.use(express.json());
 app.use(express.urlencoded());
 app.use((req, _res, next) => {
-  if (req.body) {
-    console.log("BODY\n" + req.body);
+  if (req.body && Object.keys(req.body).length) {
+    console.log("BODY\n" + JSON.stringify(req.body));
   }
   next();
 });
