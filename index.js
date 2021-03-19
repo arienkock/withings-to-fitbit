@@ -97,7 +97,7 @@ router.post("/WithingsAuth", (req, res, next) => {
         startdate: req.body.startdate,
         enddate: req.body.enddate,
         category: "1",
-        meastypes: "1,5,6,8",
+        meastypes: "1,6",
       }),
       {
         headers: {
@@ -173,10 +173,10 @@ router.get("/WithingsAuth", (req, res, next) => {
   function exchangeForWithingsTokens() {
     postWithingsAuthCode(req.query.code)
       .then(storeWithingsTokens)
-      .then((result) =>
+      .then((tokenData) =>
         res.redirect(
           `/withings-to-fitbit/FitbitAuth?withingsUserID=${encodeURIComponent(
-            result.body.userid
+            tokenData.userid
           )}`
         )
       )
@@ -192,7 +192,7 @@ function storeWithingsTokens(result) {
         .set(result.data.body.userid, result.data.body)
         .write()
     )
-    .then(() => result.data);
+    .then(() => result.data.body);
 }
 
 router.get("/FitbitAuth", (req, res, next) => {
