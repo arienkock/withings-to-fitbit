@@ -353,16 +353,22 @@ function postWithingsAuthCode(code) {
 }
 
 function axiosPost(url, data, config) {
-  return axios.post(url, data, config).then((response) => {
-    console.log(`Axios POST
+  return axios.post(url, data, config).then(
+    (response) => {
+      console.log(`Axios POST
     url:        ${url}
     request:    ${JSON.stringify(data)}
     response:   ${JSON.stringify(response.data)}
     config:     ${JSON.stringify(response.config)}
     status:     ${JSON.stringify(response.status)}
     `);
-    return response;
-  });
+      return response;
+    },
+    (error) => {
+      console.error(error);
+      throw error;
+    }
+  );
 }
 
 app.use(morgan("combined"));
