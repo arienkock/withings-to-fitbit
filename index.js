@@ -94,6 +94,7 @@ router.post("/WithingsAuth", (req, res, next) => {
     return axiosPost(
       "https://wbsapi.withings.net/measure",
       qs.stringify({
+        action: "getmeas",
         startdate: req.body.startdate,
         enddate: req.body.enddate,
         category: "1",
