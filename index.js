@@ -70,10 +70,27 @@ var router = express.Router();
 router.post("/WithingsAuth", (req, res, next) => {
   getTokenData(req.body.userid)
     .then(getWithingsMeasurements)
+    .then(logFitbitData)
     .then(() => res.send("ok"))
     .catch((err) => next(err));
 
-  function getWithingsMeasurements(withingsTokenData) {
+  function getTokenData(withingsUserId) {
+    return lowDb
+      .then((db) => db.get("subscriptions").get(withingsUserId).value())
+      .then((fitbitUserId) =>
+        Promise.all([
+          getWithingsAccessToken(withingsUserId),
+          getFitbitAccessToken(fitbitUserId),
+        ])
+      )
+      .then(([withingsTokenData, fitbitTokenData]) => ({
+        withingsTokenData,
+        fitbitTokenData,
+      }));
+  }
+
+  function getWithingsMeasurements(tokens) {
+    const { withingsTokenData } = tokens;
     return axiosPost(
       "https://wbsapi.withings.net/measure",
       qs.stringify({
@@ -91,19 +108,7 @@ router.post("/WithingsAuth", (req, res, next) => {
     );
   }
 
-  function getTokenData(withingsUserId) {
-    lowDb
-      .then((db) => db.get("subscriptions").get(withingsUserId).value())
-      .then((fitbitUserId) =>
-        Promise.all([
-          getWithingsAccessToken(withingsUserId),
-          getFitbitAccessToken(fitbitUserId),
-        ])
-      )
-      .then(([withingsTokenData, fitbitTokenData]) => {
-        getWithingsMeasurements(withingsTokenData);
-      }); // TODO
-  }
+  function logFitbitData() {}
 
   function getWithingsAccessToken(withingsUserId) {
     return lowDb
@@ -122,6 +127,7 @@ router.post("/WithingsAuth", (req, res, next) => {
     const data = qs.stringify({
       action: "requesttoken",
       client_id: WITHINGS_CLIENT_ID,
+      client_secret: WITHINGS_CONSUMER_SECRET,
       grant_type: "refresh_token",
       refresh_token: withingsTokenData.refresh_token,
     });
@@ -298,11 +304,11 @@ function postWithingsAuthCode(code) {
 function axiosPost(url, data, config) {
   return axios.post(url, data, config).then((response) => {
     console.log(`Axios POST
-    data:       ${JSON.stringify(response.data)}
+    url:        ${url}
+    request:    ${JSON.stringify(data)}
+    response:   ${JSON.stringify(response.data)}
     config:     ${JSON.stringify(response.config)}
     status:     ${JSON.stringify(response.status)}
-    statusText: ${JSON.stringify(response.statusText)}
-    headers:    ${JSON.stringify(response.headers)}
     `);
     return response;
   });
