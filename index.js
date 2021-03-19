@@ -113,14 +113,26 @@ router.post("/WithingsAuth", (req, res, next) => {
     const {
       measures,
       tokens: { fitbitTokenData },
-    } = tokens;
+    } = data;
+    const fatMeasure = measures.body.measuregrps[0].measures.find(
+      (m) => (m.type = 6)
+    );
+    const weightMeasure = measures.body.measuregrps[0].measures.find(
+      (m) => (m.type = 1)
+    );
+    const date = new Date(
+      measures.body.measuregrps[0].date * 1000
+    ).toISOString();
     return Promise.all([
       axiosPost(
         `https://api.fitbit.com/1/user/${fitbitTokenData.user_id}/body/log/fat.json`,
         qs.stringify({
-          fat: "X.XX",
-          date: "yyyy-MM-dd",
-          time: "HH:mm:ss",
+          fat:
+            new Number(
+              fatMeasure.value * Math.pow(10, fatMeasure.unit)
+            ).toFixed(2) + "",
+          date: date.substring(0, 10),
+          time: date.substring(11, 19),
         }),
         {
           headers: {
@@ -132,9 +144,12 @@ router.post("/WithingsAuth", (req, res, next) => {
       axiosPost(
         `https://api.fitbit.com/1/user/${fitbitTokenData.user_id}/body/log/weight.json`,
         qs.stringify({
-          weight: "X.XX",
-          date: "yyyy-MM-dd",
-          time: "HH:mm:ss",
+          weight:
+            new Number(
+              weightMeasure.value * Math.pow(10, weightMeasure.unit)
+            ).toFixed(2) + "",
+          date: date.substring(0, 10),
+          time: date.substring(11, 19),
         }),
         {
           headers: {
