@@ -115,49 +115,53 @@ router.post("/WithingsAuth", (req, res, next) => {
       tokens: { fitbitTokenData },
     } = data;
     const fatMeasure = measures.body.measuregrps[0].measures.find(
-      (m) => (m.type = 6)
+      (m) => m.type == 6
     );
     const weightMeasure = measures.body.measuregrps[0].measures.find(
-      (m) => (m.type = 1)
+      (m) => m.type == 1
     );
     const date = new Date(
       measures.body.measuregrps[0].date * 1000
     ).toISOString();
     return Promise.all([
-      axiosPost(
-        `https://api.fitbit.com/1/user/${fitbitTokenData.user_id}/body/log/fat.json`,
-        qs.stringify({
-          fat:
-            new Number(
-              fatMeasure.value * Math.pow(10, fatMeasure.unit)
-            ).toFixed(2) + "",
-          date: date.substring(0, 10),
-          time: date.substring(11, 19),
-        }),
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: "Bearer " + fitbitTokenData.access_token,
-          },
-        }
-      ),
-      axiosPost(
-        `https://api.fitbit.com/1/user/${fitbitTokenData.user_id}/body/log/weight.json`,
-        qs.stringify({
-          weight:
-            new Number(
-              weightMeasure.value * Math.pow(10, weightMeasure.unit)
-            ).toFixed(2) + "",
-          date: date.substring(0, 10),
-          time: date.substring(11, 19),
-        }),
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: "Bearer " + fitbitTokenData.access_token,
-          },
-        }
-      ),
+      fatMeasure
+        ? axiosPost(
+            `https://api.fitbit.com/1/user/${fitbitTokenData.user_id}/body/log/fat.json`,
+            qs.stringify({
+              fat:
+                new Number(
+                  fatMeasure.value * Math.pow(10, fatMeasure.unit)
+                ).toFixed(2) + "",
+              date: date.substring(0, 10),
+              time: date.substring(11, 19),
+            }),
+            {
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                Authorization: "Bearer " + fitbitTokenData.access_token,
+              },
+            }
+          )
+        : Promise.resolve(),
+      weightMeasure
+        ? axiosPost(
+            `https://api.fitbit.com/1/user/${fitbitTokenData.user_id}/body/log/weight.json`,
+            qs.stringify({
+              weight:
+                new Number(
+                  weightMeasure.value * Math.pow(10, weightMeasure.unit)
+                ).toFixed(2) + "",
+              date: date.substring(0, 10),
+              time: date.substring(11, 19),
+            }),
+            {
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                Authorization: "Bearer " + fitbitTokenData.access_token,
+              },
+            }
+          )
+        : Promise.resolve(),
     ]);
   }
 
