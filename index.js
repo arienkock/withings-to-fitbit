@@ -67,12 +67,12 @@ const lowDb = low(adapter).then((db) => {
 
 var router = express.Router();
 
-router.post("/WithingsAuth", (req, res, next) => {
+router.post("/WithingsAuth", (req, res) => {
+  res.send("ok");
   getTokenData(req.body.userid)
     .then(getWithingsMeasurements)
     .then(logFitbitData)
-    .then(() => res.send("ok"))
-    .catch((err) => next(err));
+    .catch((err) => console.error(err));
 
   function getTokenData(withingsUserId) {
     return lowDb
